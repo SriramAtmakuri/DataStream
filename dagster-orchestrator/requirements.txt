@@ -1,0 +1,4 @@
+dagster==1.5.14
+dagster-webserver==1.5.14
+clickhouse-connect==0.6.23
+pandas==2.1.3

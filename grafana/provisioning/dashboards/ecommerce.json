@@ -1,0 +1,142 @@
+{
+  "id": null,
+  "uid": "ecommerce-pipeline",
+  "title": "E-Commerce Real-Time Pipeline",
+  "tags": ["ecommerce", "kafka", "flink", "clickhouse"],
+  "timezone": "browser",
+  "refresh": "5s",
+  "schemaVersion": 38,
+  "version": 1,
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Total Orders (Today)",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+        "rawSql": "SELECT count() FROM ecommerce.orders WHERE toDate(timestamp) = today()",
+        "format": "table"
+      }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{"color": "green", "value": null}] } } }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Revenue Today ($)",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+        "rawSql": "SELECT round(sum(total_amount), 2) FROM ecommerce.orders WHERE toDate(timestamp) = today()",
+        "format": "table"
+      }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "color": { "mode": "thresholds" }, "thresholds": { "steps": [{"color": "blue", "value": null}] } } }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Error Rate (5 min)",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+        "rawSql": "SELECT round(countIf(status='failed') * 100.0 / count(), 2) FROM ecommerce.orders WHERE timestamp >= now() - INTERVAL 5 MINUTE",
+        "format": "table"
+      }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "unit": "percent", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 5}, {"color": "red", "value": 10}] } } }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "DLQ Messages",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+        "rawSql": "SELECT count() FROM ecommerce.dead_letter_queue WHERE failed_at >= now() - INTERVAL 1 HOUR",
+        "format": "table"
+      }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}] } } }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Orders per Minute",
+      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 8 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+        "rawSql": "SELECT minute AS time, order_count AS \"Orders\", failed_count AS \"Failed\" FROM ecommerce.orders_per_minute WHERE minute >= now() - INTERVAL 60 MINUTE ORDER BY minute ASC",
+        "format": "time_series"
+      }],
+      "fieldConfig": {
+        "defaults": { "custom": { "lineWidth": 2, "fillOpacity": 10 } },
+        "overrides": [{ "matcher": { "id": "byName", "options": "Failed" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] }]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+    },
+    {
+      "id": 6,
+      "type": "barchart",
+      "title": "Revenue by Region (Last Hour)",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+        "rawSql": "SELECT region, round(sum(total_revenue), 2) AS revenue FROM ecommerce.revenue_by_region WHERE window_start >= now() - INTERVAL 1 HOUR GROUP BY region ORDER BY revenue DESC",
+        "format": "table"
+      }],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" } },
+      "options": { "xField": "region", "orientation": "auto", "legend": { "displayMode": "list" } }
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Top 10 Products (Last Hour)",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+        "rawSql": "SELECT product, category, sum(quantity_sold) AS qty, round(sum(total_revenue), 2) AS revenue FROM ecommerce.top_products WHERE window_start >= now() - INTERVAL 1 HOUR GROUP BY product, category ORDER BY revenue DESC LIMIT 10",
+        "format": "table"
+      }],
+      "options": { "sortBy": [{ "displayName": "revenue", "desc": true }] }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Kafka Publish Rate (Go API)",
+      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "rate(orders_published_total[1m])",
+        "legendFormat": "Published/sec"
+      }, {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "rate(orders_dlq_total[1m])",
+        "legendFormat": "DLQ/sec"
+      }]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Cumulative Revenue",
+      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "orders_revenue_total",
+        "legendFormat": "Revenue ($)"
+      }],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" } }
+    }
+  ]
+}
