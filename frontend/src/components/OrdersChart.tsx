@@ -44,7 +44,7 @@ export function OrdersChart({ data }: Props) {
         <Tooltip
           contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', color: '#e2e8f0' }}
           labelFormatter={(v) => `Time: ${formatMinute(String(v))}`}
-          formatter={(value, name) => [value, name === 'order_count' ? 'Orders' : 'Failed']}
+          formatter={(value, name) => [value, name]}
         />
         <Legend wrapperStyle={{ color: '#94a3b8', fontSize: '12px' }} />
         <Line
