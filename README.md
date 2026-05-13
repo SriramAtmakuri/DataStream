@@ -1,6 +1,6 @@
 # Real-Time E-Commerce Streaming Pipeline
 
-A fully local, production-grade streaming data pipeline using 100% open-source tools.
+A fully local, production-grade streaming data pipeline.
 
 ---
 
